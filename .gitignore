@@ -1,3 +1,5 @@
 # legacy matlab files
 *.mat
-*.m 
+*.m
+Manifest.toml
+*/Manifest.toml
