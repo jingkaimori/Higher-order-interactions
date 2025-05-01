@@ -1,5 +1,6 @@
 name = "Higher_order_interactions"
 authors = ["jingkaimori"]
+uuid = "c667c23d-9034-48d2-973c-5043b981296f"
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
