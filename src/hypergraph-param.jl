@@ -113,9 +113,5 @@ function generate_matrix_related_from_L(L::Int, graph::Union{Symbol,Expr})
     finch_statements.args = collect(Iterators.flatten(stat.args for stat in finch_statements.args))
 
 
-    return quote
-        $global_statements
-
-        @finch mode=:debug $finch_statements
-    end
+    return (global_statements, finch_statements)
 end

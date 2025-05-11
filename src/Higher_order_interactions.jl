@@ -9,5 +9,7 @@ include("hypergraph.jl")
 export generate_matrix_related_from_L
 include("hypergraph-param.jl")
 
+export generate_lyapunouv_solver_definitions, lyapunouv_solver, prepare_lyapunouv_known_matrix
+include("lyapunouv-solver.jl")
 
 end
