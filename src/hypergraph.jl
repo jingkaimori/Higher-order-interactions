@@ -1,50 +1,44 @@
 
-# 
-
-using Finch
-using Combinatorics
-
 struct Hypergraph
-    edges::Array{Finch.AbstractTensor}
+    edges::Array{Array{Int,1},1}
+    vertex_nums::Int
+    mininum_edge_size::Int
+    maxinum_edge_size::Int
 end
 
-function Hypergraph_from_legacy_scalars(madj2,madj3)
-    local N = size(madj3,1)
-    local indices = collect(combinations(1:N, 2))
-    local index_dict::Dict = Dict((val,idx) for (idx,val) in enumerate(indices))
-    function get_madj3_column_index(j,k, index_dict)::Union{Int,Nothing}
-        local res = get(index_dict, [j,k], nothing)
-        if isnothing(res)
-            return get(index_dict, [k,j], nothing)
-        else
-            return res
-        end
+Base.size(h::Hypergraph) = (h.maxinum_edge_size,)
+Base.getindex(h::Hypergraph, i::Int) =
+    if i >= h.mininum_edge_size
+        return h.edges[i-h.mininum_edge_size+1]
+    else
+        throw(BoundsError(h, i))
     end
+Base.setindex!(h::Hypergraph, v::Array{Int,1}, i::Int) =
+    if i >= h.mininum_edge_size
+        (h.edges[i-h.mininum_edge_size+1] = v)
+    else
+        throw(BoundsError(h, i))
+    end
+Base.IndexStyle(::Type{<:Hypergraph}) = IndexLinear()
 
-    local omega_2d::Tensor = Tensor(Dense(SparseList(Element(UInt8(0)))), N, N)
-    local omega_3d::Tensor = Tensor(Dense(SparseList(SparseList(Element(UInt8(0))))), N, N, N)
-    @finch begin
-        omega_2d .= 0
-        for j in _, i in _
-            if madj2[i, j] != 0
-                omega_2d[i, j] = madj2[i, j]
-            end
-        end
-
-        omega_3d .= 0
-        for k in 1:N, j in 1:N, i in _
-            if j != k
-                let elem = madj3[i, ~get_madj3_column_index(j,k,index_dict)]
-                    if elem != 0
-                        omega_3d[i, j, k] = elem
-                    end
-                end
-            end
-        end
+function Hypergraph_from_legacy_scalars(madj2, madj3, N)
+    local indices_2 = collect(Combinations(N, 2))
+    local indices_3 = collect(Combinations(N, 3))
+    edge2 = Bool[]
+    sizehint!(edge2, length(indices_2))
+    edge3 = Bool[]
+    sizehint!(edge3, length(indices_3))
+    for index in indices_2
+        (index1, index2) = index
+        push!(edge2, madj2[index1, index2] != 0)
+    end
+    for index in indices_3
+        (index1, index2, index3) = index
+        push!(edge3, madj3[index1, get_combination_code([index2, index3], N)] != 0)
     end
 
     return Hypergraph(
-        [Scalar(0), omega_2d, omega_3d]
+        [edge2, edge3], N, 2, 3
     )
 end
 

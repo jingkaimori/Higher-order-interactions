@@ -1,0 +1,241 @@
+using Combinatorics
+
+
+struct PascalsTriangle
+    data::Matrix{Int}
+end
+
+function PascalsTriangle(max_n::Int)
+    data = Matrix{Int}(undef, max_n + 1, max_n + 1)
+    for n in 0:max_n
+        data[n+1, 1] = 1  # 第一列
+        data[n+1, n+1] = 1  # 对角线
+        for k in 1:n-1
+            data[n+1, k+1] = data[n, k] + data[n, k+1]
+        end
+    end
+    return PascalsTriangle(data)
+end
+
+Base.getindex(pt::PascalsTriangle, n::Int, k::Int) = pt.data[n+1, k+1]
+
+function merge_sorted_arrays(partial_comb::Vector{Int}, remain_comb::Vector{Int})::Vector{Int}
+    lp = length(partial_comb)
+    lr = length(remain_comb)
+    full_comb = Int[]  # 初始化结果数组
+    sizehint!(full_comb, lp + lr)  # 提高性能
+
+    # 创建两个迭代器
+    next_p = iterate(partial_comb)
+    next_r = iterate(remain_comb)
+
+    # 合并两个数组
+    while !(isnothing(next_p) || isnothing(next_r))
+        local (cur_p, stat_p) = next_p
+        local (cur_r, stat_r) = next_r
+        if cur_p <= cur_r
+            push!(full_comb, cur_p)
+            next_p = iterate(partial_comb, stat_p)
+        else
+            push!(full_comb, cur_r)
+            next_r = iterate(remain_comb, stat_r)
+        end
+    end
+
+    # 将剩余元素加入结果数组
+    if (!isnothing(next_p))
+        (cur_p, stat_p) = next_p
+        append!(full_comb, Iterators.drop(partial_comb, stat_p - 2))
+    end
+    if (!isnothing(next_r))
+        (cur_r, stat_r) = next_r
+        append!(full_comb, Iterators.drop(remain_comb, stat_r - 2))
+    end
+
+    return full_comb
+end
+
+@inline function merge_sorted_arrays!(full_comb::Vector{Int}, partial_comb::Vector{Int}, remain_comb::Vector{Int})
+    lp = length(partial_comb)
+    lr = length(remain_comb)
+    lf = lp + lr
+    idx_f = 1
+    resize!(full_comb, lf)  # 提高性能
+
+    # 创建两个迭代器
+    next_p = iterate(partial_comb)
+    next_r = iterate(remain_comb)
+
+    # 合并两个数组
+    while !(isnothing(next_p) || isnothing(next_r))
+        local (cur_p, stat_p) = next_p
+        local (cur_r, stat_r) = next_r
+        if cur_p <= cur_r
+            full_comb[idx_f] = cur_p
+            next_p = iterate(partial_comb, stat_p)
+        else
+            full_comb[idx_f] = cur_r
+            next_r = iterate(remain_comb, stat_r)
+        end
+        idx_f += 1
+    end
+
+    # 将剩余元素加入结果数组
+    if (!isnothing(next_r))
+        (_, stat_r) = next_r
+        full_comb[(idx_f):lf] = view(remain_comb, (stat_r-1):lr)
+    end
+    if (!isnothing(next_p))
+        (_, stat_p) = next_p
+        full_comb[(idx_f):lf] = view(partial_comb, (stat_p-1):lp)
+    end
+end
+
+@inline function get_combination_code(combination::Vector{Int}, n::Int, pt::PascalsTriangle)::Int
+    k = length(combination)
+    # 计算组合的字典序位置
+    code = 1
+    @inbounds for i in eachindex(combination)
+        init = (i == 1 ? 1 : combination[i-1] + 1)
+        for j in init:(combination[i]-1)
+            code += pt[n-j, k-i]
+        end
+    end
+    return code
+end
+
+function get_combination_code(combination::Vector{Int}, n::Int)::Int
+    k = length(combination)
+    # 计算组合的字典序位置
+    code = 1
+    @inbounds for i in eachindex(combination)
+        init = (i == 1 ? 1 : combination[i-1] + 1)
+        for j in init:(combination[i]-1)
+            code += binomial(n - j, k - i)
+        end
+    end
+    return code
+end
+
+
+function partial_combination_to_codes!(
+    codes::Vector{Int},
+    partial_comb::Vector{Int}, k::Int, n::Int,
+    remaining_comb_indices::Vector{Vector{Int}}, pt::PascalsTriangle, remaining::Vector{Int})::Nothing
+    full_comb = Vector{Int}(undef, k)
+    remain_comb = Vector{Int}(undef, k - length(partial_comb))
+
+    # 遍历所有可能的剩余组合
+    @inbounds for remain_comb_idx in eachindex(remaining_comb_indices)
+        remain_comb_items = remaining_comb_indices[remain_comb_idx]
+        for (j, idx) in enumerate(remain_comb_items)
+            remain_comb[j] = remaining[idx]
+        end
+        merge_sorted_arrays!(full_comb, partial_comb, remain_comb)
+        codes[remain_comb_idx] = get_combination_code(full_comb, n, pt)
+    end
+end
+
+function partial_combination_to_codes(partial_comb::Vector{Int}, k::Int, n::Int)::Vector{Int}
+    l = length(partial_comb)
+    remaining_k = k - l
+    remaining_n = n - l
+    remaining = [i for i in 1:n if !(i in partial_comb)]
+    codes = Int[]
+    remaining_comb_indices = Combinations(remaining_n, remaining_k)
+    sizehint!(codes, length(remaining_comb_indices))  # 提高性能
+
+    # 遍历所有可能的剩余组合
+    for remain_comb_idx in remaining_comb_indices
+        remain_comb = [remaining[i] for i in remain_comb_idx]
+        full_comb = merge_sorted_arrays(partial_comb, remain_comb)
+        push!(codes, get_combination_code(full_comb, n))
+    end
+
+    return codes
+end
+
+#The Combinations iterator
+struct Combinations
+    n::Int
+    t::Int
+end
+
+@inline function Base.iterate(c::Combinations, s=[min(c.t - 1, i) for i in 1:c.t])
+    if c.t == 0 # special case to generate 1 result for t==0
+        isempty(s) && return (s, [1])
+        return
+    end
+    for i in c.t:-1:1
+        s[i] += 1
+        if s[i] > (c.n - (c.t - i))
+            continue
+        end
+        for j in i+1:c.t
+            s[j] = s[j-1] + 1
+        end
+        break
+    end
+    s[1] > c.n - c.t + 1 && return
+    (copy(s), s)
+end
+
+Base.length(c::Combinations) = binomial(c.n, c.t)
+
+Base.eltype(::Type{Combinations}) = Vector{Int}
+
+struct CombinationsAsPartition
+    n::Int
+    t::Int
+end
+
+@inline function Base.iterate(c::CombinationsAsPartition, s=[min(c.t - 1, i) for i in 1:c.t])
+    if c.t == 0 # special case to generate 1 result for t==0
+        isempty(s) && return ([1], [])
+        return
+    end
+    for i in c.t:-1:1
+        s[i] += 1
+        if s[i] > (c.n - (c.t - i))
+            continue
+        end
+        for j in i+1:c.t
+            s[j] = s[j-1] + 1
+        end
+        break
+    end
+    s[1] > c.n - c.t + 1 && return
+    selected = copy(s)
+    unselected = [i for i in 1:c.n if !(i in selected)]
+    ((selected, unselected), s)
+end
+
+Base.length(c::CombinationsAsPartition) = binomial(c.n, c.t)
+
+Base.eltype(::Type{CombinationsAsPartition}) = Tuple{Vector{Int},Vector{Int}}
+
+"""
+    combinations(a, n)
+
+Generate all combinations of `n` elements from an indexable object `a`. Because the number
+of combinations can be very large, this function returns an iterator object.
+Use `collect(combinations(a, n))` to get an array of all combinations.
+"""
+function combinations(a, t::Integer)
+    if t < 0
+        # generate 0 combinations for negative argument
+        t = length(a) + 1
+    end
+    reorder(c) = [a[ci] for ci in c]
+    (reorder(c) for c in Combinations(length(a), t))
+end
+
+
+"""
+    combinations(a)
+
+Generate combinations of the elements of `a` of all orders. Chaining of order iterators
+is eager, but the sequence at each order is lazy.
+"""
+combinations(a) = Iterators.flatten([combinations(a, k) for k = 1:length(a)])
+
