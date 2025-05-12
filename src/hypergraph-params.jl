@@ -3,9 +3,9 @@ using Higher_order_interactions
 function prepare_lookups(graph::Hypergraph)::Tuple{PascalsTriangle, Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}}}
     N = graph.vertex_nums
     L = graph.maxinum_edge_size
-    combinations_list = Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}}(undef, L)
+    combinations_list = Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}}(undef, L+1)
     pt = PascalsTriangle(N)
-    for i in 1:L
+    for i in 1:(L+1)
         combinations_list[i] = collect(
             (comb, [i for i in 1:N if !(i in comb)]) for comb in Combinations(N, i))
     end
