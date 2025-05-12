@@ -6,10 +6,10 @@ include("payoffs.jl")
 export Hypergraph, Hypergraph_from_legacy_scalars
 include("hypergraph.jl")
 
-export calculate_hypergraph_params
-include("hypergraph-params.jl")
-
-export Combinations, CombinationsAsPartition, PascalsTriangle, get_combination_code, partial_combination_to_codes, partial_combination_to_codes!
+export Combinations, CombinationsAsPartition, PascalsTriangle, get_combination_code, prepare_partial_combination_to_codes, partial_combination_to_codes!
 include("combinatoric-utils.jl")
+
+export calculate_hypergraph_params, prepare_lookups
+include("hypergraph-params.jl")
 
 end

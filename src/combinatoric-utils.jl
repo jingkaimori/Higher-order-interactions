@@ -1,5 +1,3 @@
-using Combinatorics
-
 
 struct PascalsTriangle
     data::Matrix{Int}
@@ -17,42 +15,9 @@ function PascalsTriangle(max_n::Int)
     return PascalsTriangle(data)
 end
 
-Base.getindex(pt::PascalsTriangle, n::Int, k::Int) = pt.data[n+1, k+1]
-
-function merge_sorted_arrays(partial_comb::Vector{Int}, remain_comb::Vector{Int})::Vector{Int}
-    lp = length(partial_comb)
-    lr = length(remain_comb)
-    full_comb = Int[]  # 初始化结果数组
-    sizehint!(full_comb, lp + lr)  # 提高性能
-
-    # 创建两个迭代器
-    next_p = iterate(partial_comb)
-    next_r = iterate(remain_comb)
-
-    # 合并两个数组
-    while !(isnothing(next_p) || isnothing(next_r))
-        local (cur_p, stat_p) = next_p
-        local (cur_r, stat_r) = next_r
-        if cur_p <= cur_r
-            push!(full_comb, cur_p)
-            next_p = iterate(partial_comb, stat_p)
-        else
-            push!(full_comb, cur_r)
-            next_r = iterate(remain_comb, stat_r)
-        end
-    end
-
-    # 将剩余元素加入结果数组
-    if (!isnothing(next_p))
-        (cur_p, stat_p) = next_p
-        append!(full_comb, Iterators.drop(partial_comb, stat_p - 2))
-    end
-    if (!isnothing(next_r))
-        (cur_r, stat_r) = next_r
-        append!(full_comb, Iterators.drop(remain_comb, stat_r - 2))
-    end
-
-    return full_comb
+function Base.getindex(pt::PascalsTriangle, n::Int, k::Int)
+    @boundscheck checkbounds(pt.data, n+1, k+1)
+    return @inbounds pt.data[n+1, k+1]
 end
 
 @inline function merge_sorted_arrays!(full_comb::Vector{Int}, partial_comb::Vector{Int}, remain_comb::Vector{Int})
@@ -71,10 +36,10 @@ end
         local (cur_p, stat_p) = next_p
         local (cur_r, stat_r) = next_r
         if cur_p <= cur_r
-            full_comb[idx_f] = cur_p
+            @inbounds full_comb[idx_f] = cur_p
             next_p = iterate(partial_comb, stat_p)
         else
-            full_comb[idx_f] = cur_r
+            @inbounds full_comb[idx_f] = cur_r
             next_r = iterate(remain_comb, stat_r)
         end
         idx_f += 1
@@ -83,22 +48,23 @@ end
     # 将剩余元素加入结果数组
     if (!isnothing(next_r))
         (_, stat_r) = next_r
-        full_comb[(idx_f):lf] = view(remain_comb, (stat_r-1):lr)
+        @inbounds full_comb[(idx_f):lf] = view(remain_comb, (stat_r-1):lr)
     end
     if (!isnothing(next_p))
         (_, stat_p) = next_p
-        full_comb[(idx_f):lf] = view(partial_comb, (stat_p-1):lp)
+        @inbounds full_comb[(idx_f):lf] = view(partial_comb, (stat_p-1):lp)
     end
 end
 
 @inline function get_combination_code(combination::Vector{Int}, n::Int, pt::PascalsTriangle)::Int
     k = length(combination)
     # 计算组合的字典序位置
-    code = 1
-    @inbounds for i in eachindex(combination)
-        init = (i == 1 ? 1 : combination[i-1] + 1)
-        for j in init:(combination[i]-1)
-            code += pt[n-j, k-i]
+    code::Int = 1
+    for i::Int in eachindex(combination)
+        init::Int = (i == 1 ? 1 : combination[i-1] + 1)
+        @inbounds stop::Int = combination[i] - 1
+        for j in init:stop
+            @inbounds code += pt[n-j, k-i]
         end
     end
     return code
@@ -117,14 +83,18 @@ function get_combination_code(combination::Vector{Int}, n::Int)::Int
     return code
 end
 
+function prepare_partial_combination_to_codes(N::Int, full_comb_l::Int, part_comb_l::Int, remaining_comb_indices::Vector{Vector{Int}}, pt::PascalsTriangle)::Tuple{Vector{Int}, Vector{Int}, Vector{Int}, Vector{Vector{Int}}, PascalsTriangle}
+    indices_expand = Vector{Int}(undef, pt[N - part_comb_l,full_comb_l - part_comb_l])
+    full_comb_prealloc = Vector{Int}(undef, full_comb_l)
+    remain_comb_prealloc = Vector{Int}(undef, full_comb_l - part_comb_l)
+    return (indices_expand, full_comb_prealloc, remain_comb_prealloc, remaining_comb_indices, pt)
+end
 
 function partial_combination_to_codes!(
-    codes::Vector{Int},
-    partial_comb::Vector{Int}, k::Int, n::Int,
-    remaining_comb_indices::Vector{Vector{Int}}, pt::PascalsTriangle, remaining::Vector{Int})::Nothing
-    full_comb = Vector{Int}(undef, k)
-    remain_comb = Vector{Int}(undef, k - length(partial_comb))
-
+    partial_comb::Vector{Int}, n::Int,
+    remaining::Vector{Int},
+    prepared_things::Tuple{Vector{Int}, Vector{Int}, Vector{Int}, Vector{Vector{Int}}, PascalsTriangle})::Nothing
+    (codes, full_comb, remain_comb, remaining_comb_indices, pt) = prepared_things
     # 遍历所有可能的剩余组合
     @inbounds for remain_comb_idx in eachindex(remaining_comb_indices)
         remain_comb_items = remaining_comb_indices[remain_comb_idx]
@@ -134,25 +104,6 @@ function partial_combination_to_codes!(
         merge_sorted_arrays!(full_comb, partial_comb, remain_comb)
         codes[remain_comb_idx] = get_combination_code(full_comb, n, pt)
     end
-end
-
-function partial_combination_to_codes(partial_comb::Vector{Int}, k::Int, n::Int)::Vector{Int}
-    l = length(partial_comb)
-    remaining_k = k - l
-    remaining_n = n - l
-    remaining = [i for i in 1:n if !(i in partial_comb)]
-    codes = Int[]
-    remaining_comb_indices = Combinations(remaining_n, remaining_k)
-    sizehint!(codes, length(remaining_comb_indices))  # 提高性能
-
-    # 遍历所有可能的剩余组合
-    for remain_comb_idx in remaining_comb_indices
-        remain_comb = [remaining[i] for i in remain_comb_idx]
-        full_comb = merge_sorted_arrays(partial_comb, remain_comb)
-        push!(codes, get_combination_code(full_comb, n))
-    end
-
-    return codes
 end
 
 #The Combinations iterator
