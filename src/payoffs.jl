@@ -34,6 +34,51 @@ function payoff_of_public_good_games_with_convex_benefit(benefit::Num, cost::Num
     )
 end
 
+function payoff_of_threshold_public_good_games(benefit::Num, cost::Num, participants::UInt, threshold::UInt)::The_game
+    local a = Array{Num,1}(undef, participants)
+    local b = Array{Num,1}(undef, participants)
+    for i in 1:(participants)
+        if i >= threshold
+            a[i] = ((benefit * Int(i)) / Int(participants) )
+        else
+            a[i] = 0
+        end
+        if i > threshold
+            b[i] = ((benefit * Int(i-1)) / Int(participants)) + cost
+        else
+            b[i] = 0
+        end
+    end
+    return The_game(
+        participants,
+        benefit,
+        cost,
+        a,
+        b
+    )
+end
+
+function payoff_of_multiplayer_snowdrift_games(benefit::Num, cost::Num, participants::UInt)::The_game
+    local a = Array{Num,1}(undef, participants)
+    local b = Array{Num,1}(undef, participants)
+    for i in 1:(participants)
+        # local b = benefit
+        if i == 1
+            b[i] = Int(0)
+        else
+            b[i] = benefit
+        end
+        a[i] = benefit - cost / Int(i)
+    end
+    return The_game(
+        participants,
+        benefit,
+        cost,
+        a,
+        b
+    )
+end
+
 function payoff_of_abstract_symmetric_games(participants::UInt)::The_game
     @variables a[1:participants],b[1:participants]
     return The_game(
