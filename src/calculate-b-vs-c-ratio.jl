@@ -51,6 +51,9 @@ function generate_packed_index(N::Int, l::Int, pt::PascalsTriangle)
         return result
     else
         result = PackedIndex[]
+        if N-2 < l
+            return result
+        end
         sizehint!(result, N*(N-1)*pt[N-2, l])
         relative_indices_of_indices = collect(Combinations(N-2, l))
         I_comb = Vector{Int}(undef, l)
