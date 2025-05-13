@@ -1,3 +1,4 @@
+using Higher_order_interactions
 
 struct Hypergraph
     edges::Array{Array{Int,1},1}
@@ -19,6 +20,8 @@ Base.setindex!(h::Hypergraph, v::Array{Int,1}, i::Int) =
     else
         throw(BoundsError(h, i))
     end
+Base.firstindex(h::Hypergraph) = h.mininum_edge_size
+Base.lastindex(h::Hypergraph) = h.maxinum_edge_size
 Base.IndexStyle(::Type{<:Hypergraph}) = IndexLinear()
 
 function Hypergraph_from_legacy_scalars(madj2, madj3, N)
@@ -42,12 +45,23 @@ function Hypergraph_from_legacy_scalars(madj2, madj3, N)
     )
 end
 
-function Hypergraph_from_incidence_matrix(matrix::Matrix{Int64}, N::Int, pt::PascalsTriangle)
+function Hypergraph_from_incidence_matrix(matrix::Matrix{Int64}, N::Int, col_maxsize::Int, col_minsize::Int, pt::PascalsTriangle)
     
     edges = Vector{Vector{Int}}(undef, N)
     for l in 1:N
         edges[l] = zeros(Int, pt[N, l])
     end
+    for col in eachcol(matrix)
+        col_nz = findall(col .== 1)
+        col_size = length(col_nz)
+        col_order = get_combination_code(col_nz, N, pt)
+        edges[col_size][col_order] = 1
+    end
+    return Hypergraph(edges[col_minsize:col_maxsize], N, col_minsize, col_maxsize)
+end
+
+function scan_incidence_matrix(matrix::Matrix{Int64})
+    N = size(matrix,1)
     col_maxsize = 0
     col_minsize = N
     for col in eachcol(matrix)
@@ -55,8 +69,32 @@ function Hypergraph_from_incidence_matrix(matrix::Matrix{Int64}, N::Int, pt::Pas
         col_size = length(col_nz)
         col_maxsize = max(col_maxsize, col_size)
         col_minsize = min(col_minsize, col_size)
-        col_order = get_combination_code(col_nz, N, pt)
-        edges[col_size][col_order] = 1
     end
-    return Hypergraph(edges[col_minsize:col_maxsize], N, col_minsize, col_maxsize)
+    return (N, col_maxsize, col_minsize)
+end
+
+function to_incidence_matrix(graph::Hypergraph)::Matrix{Int}
+    dense_mat = zeros(Int, graph.vertex_nums, 0)
+    for l in (graph.mininum_edge_size):(graph.maxinum_edge_size)
+        ordered_edges = graph[l]
+        for (ordered_indices, indices) in enumerate(Combinations(graph.vertex_nums, l))
+            if ordered_edges[ordered_indices] == 0
+                continue
+            end
+            dense_line = zeros(Int, graph.vertex_nums)
+            dense_line[indices] .= 1
+            dense_mat = hcat(dense_mat, dense_line)
+        end
+    end
+    return dense_mat
+end
+
+function incidence_matrix_to_string(dense_mat::Matrix{Int})::String
+    result = ""
+    for row in eachrow(dense_mat)
+        row_str = join(row, " ")
+        result *= row_str * "\n"
+    end
+
+    return result
 end

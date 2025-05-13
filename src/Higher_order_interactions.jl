@@ -7,7 +7,7 @@ include("combinatoric-utils.jl")
 export Multi_linear_polynomial, payoff_of_abstract_symmetric_games, payoff_of_public_good_games_with_convex_benefit, payoff_of_multiplayer_snowdrift_games, payoff_of_threshold_public_good_games, multi_linear_polynomial
 include("payoffs.jl")
 
-export Hypergraph, Hypergraph_from_legacy_scalars
+export Hypergraph, Hypergraph_from_legacy_scalars, Hypergraph_from_incidence_matrix, scan_incidence_matrix, to_incidence_matrix, incidence_matrix_to_string
 include("hypergraph.jl")
 
 

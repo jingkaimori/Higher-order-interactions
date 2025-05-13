@@ -3,6 +3,10 @@ using Higher_order_interactions
 function prepare_lookups(graph::Hypergraph)::Tuple{PascalsTriangle, Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}}}
     N = graph.vertex_nums
     L = graph.maxinum_edge_size
+    return prepare_lookups(N, L)
+end
+
+function prepare_lookups(N::Int, L::Int)::Tuple{PascalsTriangle, Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}}}
     combinations_list = Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}}(undef, L+1)
     pt = PascalsTriangle(N)
     for i in 1:(L+1)
