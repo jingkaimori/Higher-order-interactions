@@ -8,7 +8,7 @@ end
 
 function prepare_lookups(N::Int, L::Int)::Tuple{PascalsTriangle, Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}}}
     combinations_list = Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}}(undef, L+1)
-    pt = PascalsTriangle(N)
+    pt = PascalsTriangle(N+1)
     for i in 1:(L+1)
         combinations_list[i] = collect(
             (comb, [i for i in 1:N if !(i in comb)]) for comb in Combinations(N, i))

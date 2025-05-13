@@ -14,6 +14,9 @@ end
 
 function generate_packed_diagnomial_index(N::Int, l::Int, pt::PascalsTriangle)
     result = PackedDiagIndex[]
+    if N-1 < l
+        return result
+    end
     sizehint!(result, N*pt[N-1, l])
     relative_indices_of_indices = collect(Combinations(N-1, l))
     I_comb = Vector{Int}(undef, l)

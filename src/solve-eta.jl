@@ -58,6 +58,9 @@ end
 function solve_eta(p_1, N, l, eta_l_lower_size, pt, combinations_list)
     index_dict_l = combinations_list[l]
     dict_size = pt[N, l];
+    if dict_size == 0
+        return []
+    end
     id_x_arr = Float64[]; id_y_arr = Float64[];
     val_arr = Float64[];
     b_arr = Float64[];
