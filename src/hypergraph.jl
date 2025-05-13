@@ -60,6 +60,14 @@ function Hypergraph_from_incidence_matrix(matrix::Matrix{Int64}, N::Int, col_max
     return Hypergraph(edges[col_minsize:col_maxsize], N, col_minsize, col_maxsize)
 end
 
+function Hypergraph_wellmixed(N::Int, max_edge_size::Int, pt::PascalsTriangle)
+    edges = Vector{Vector{Int}}(undef, N)
+    for l in 2:max_edge_size
+        edges[l] = ones(Int, pt[N, l])
+    end
+    return Hypergraph(edges[2:max_edge_size], N, 2, max_edge_size)
+end
+
 function scan_incidence_matrix(matrix::Matrix{Int64})
     N = size(matrix,1)
     col_maxsize = 0
