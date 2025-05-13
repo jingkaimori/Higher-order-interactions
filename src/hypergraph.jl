@@ -42,4 +42,21 @@ function Hypergraph_from_legacy_scalars(madj2, madj3, N)
     )
 end
 
-# graph = Hypergraph_from_legacy_scalars(madj2,madj3)
+function Hypergraph_from_incidence_matrix(matrix::Matrix{Int64}, N::Int, pt::PascalsTriangle)
+    
+    edges = Vector{Vector{Int}}(undef, N)
+    for l in 1:N
+        edges[l] = zeros(Int, pt[N, l])
+    end
+    col_maxsize = 0
+    col_minsize = N
+    for col in eachcol(matrix)
+        col_nz = findall(col .== 1)
+        col_size = length(col_nz)
+        col_maxsize = max(col_maxsize, col_size)
+        col_minsize = min(col_minsize, col_size)
+        col_order = get_combination_code(col_nz, N, pt)
+        edges[col_size][col_order] = 1
+    end
+    return Hypergraph(edges[col_minsize:col_maxsize], N, col_minsize, col_maxsize)
+end

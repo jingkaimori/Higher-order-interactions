@@ -1,10 +1,9 @@
 using Higher_order_interactions
 using FileIO
-using BenchmarkTools
 using Symbolics
 using LinearAlgebra
 
-data = load("tests/data/alltestdata5.hdf5")
+data = load("tests/data/alltestdata3.hdf5")
 
 graph = Hypergraph_from_legacy_scalars(data["madj2"],data["madj3"],size(data["madj2"],1))
 
@@ -46,7 +45,7 @@ p_0 = Matrix{Float64}(I, N, N)
 
 game_mul = Vector{Multi_linear_polynomial}(undef, L)
 for s in 2:L
-    convex_PGG = payoff_of_public_good_games_with_convex_benefit(b,c,delta[s], UInt(3))
+    convex_PGG = payoff_of_public_good_games_with_convex_benefit(b,c,delta[s], UInt(s))
     game_mul[s] = multi_linear_polynomial(convex_PGG)
 end
 
@@ -89,7 +88,7 @@ values = Dict(delta[2] => data["disc1"][], delta[3] => data["disc2"][])
 b_c_ratio_num = substitute(simplify(b_c_ratio_expr), values)
 coeff_b_num = substitute(simplify(coeff_b), values)
 coeff_c_num = substitute(simplify(coeff_c), values)
-b_c_ratio_err = (b_c_ratio_num - data["bcratio"][]) / data["bcratio"][]
-coeff_b_err = (coeff_b_num - data["fb"][]) / data["fb"][]
-coeff_c_err = (-coeff_c_num - data["fc"][]) / data["fc"][]
+# b_c_ratio_err = (b_c_ratio_num - data["bcratio"][]) / data["bcratio"][]
+# coeff_b_err = (coeff_b_num - data["fb"][]) / data["fb"][]
+# coeff_c_err = (-coeff_c_num - data["fc"][]) / data["fc"][]
 println("b_c_ratio: $b_c_ratio_num")

@@ -73,10 +73,14 @@ function solve_eta(p_1, N, l, eta_l_lower_size, pt, combinations_list)
         for y in neg_tuple
             replace_one_index!(replaced_tuples, index_tuple, y)
             for (replaced_indice_pos,replaced_tuple) in enumerate(replaced_tuples)
+                p_1_i_y = p_1[index_tuple[replaced_indice_pos], y]
+                if p_1_i_y == 0
+                    continue
+                end
                 replaced_tuple_idx = get_combination_code(replaced_tuple, N, pt)
                 push!(id_x_arr, order_of_index_tuple)
                 push!(id_y_arr, replaced_tuple_idx)
-                push!(val_arr, p_1[index_tuple[replaced_indice_pos], y] / l)
+                push!(val_arr, p_1_i_y / l)
             end
         end
         
@@ -84,8 +88,12 @@ function solve_eta(p_1, N, l, eta_l_lower_size, pt, combinations_list)
         extract_one_index!(extracted_tuples, index_tuple)
         for y in index_tuple
             for (extract_indice_pos,extract_index_tuple) in enumerate(extracted_tuples)
+                p_1_i_y = p_1[index_tuple[extract_indice_pos], y]
+                if p_1_i_y == 0
+                    continue
+                end
                 extract_index = get_combination_code(extract_index_tuple, N, pt);
-                val = eta_l_lower_size[extract_index] * p_1[index_tuple[extract_indice_pos], y] / l;
+                val = eta_l_lower_size[extract_index] * p_1_i_y / l;
                 b_value -= val;
             end
         end
