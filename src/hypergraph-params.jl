@@ -20,11 +20,12 @@ function calculate_hypergraph_params(graph::Hypergraph, pt::PascalsTriangle, com
     N = graph.vertex_nums
     L = graph.maxinum_edge_size
     t = Vector{Hypergraph}(undef, L)
-    for s in 2:L
+    lowest_degree = max(2, graph.mininum_edge_size)
+    for s in lowest_degree:L
         t[s] = Hypergraph([Int[] for _ in 1:s], N, 1, s)
     end
     
-    for s in 2:L
+    for s in lowest_degree:L
         s_degree_edges = graph[s]
         for l in 1:s
             remaining_comb_indices = collect(Combinations(N - l, s - l))
@@ -49,7 +50,7 @@ function calculate_hypergraph_params(graph::Hypergraph, pt::PascalsTriangle, com
     end
     
     r = zeros(Int, pt[N, 2])
-    for s in 2:L
+    for s in lowest_degree:L
         r .+= t[s][2]
     end
 
