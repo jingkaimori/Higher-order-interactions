@@ -54,6 +54,7 @@ function prepare_all(graph_matrix::Matrix{Int}, games_generator::Function, last_
         return (graph, lookups, packed_diag_index, packed_index, game_mul, b, c, delta, games_generator)
     else
         (_, lookups, packed_diag_index, packed_index, last_game_mul, last_b, last_c, last_delta, last_games_generator) = last_prepared
+        pt = lookups[1]
         graph = Hypergraph_from_incidence_matrix(graph_matrix, N, L, min_l, pt)
         if games_generator !== last_games_generator
             L = graph.maxinum_edge_size
