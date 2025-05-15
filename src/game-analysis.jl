@@ -71,7 +71,9 @@ function calculate_b_c_ratio_from_graph_matrix(prepared_info)
     N = graph.vertex_nums
     L = graph.maxinum_edge_size
 
-    (t,p_1,p_2,pi_) = calculate_hypergraph_params(graph, lookups...)
+    (t,r) = calculate_hypergraph_params(graph, lookups...)
+
+    (p_1,p_2,pi_) = calculate_random_walk_prob(r,N, lookups...)
 
     eta_all_order = Vector{Vector{Float64}}(undef, L + 1)
     eta_all_order[1] = zeros(Float64, N)

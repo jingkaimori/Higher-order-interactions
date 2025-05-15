@@ -11,7 +11,7 @@ export Hypergraph, Hypergraph_from_legacy_scalars, Hypergraph_from_incidence_mat
 include("hypergraph.jl")
 
 
-export calculate_hypergraph_params, prepare_lookups
+export calculate_hypergraph_params, calculate_random_walk_prob, prepare_lookups
 include("hypergraph-params.jl")
 
 export solve_eta

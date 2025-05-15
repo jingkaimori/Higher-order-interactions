@@ -3,16 +3,18 @@ using FileIO
 using Symbolics
 using LinearAlgebra
 
-data = load("tests/data/alltestdata3.hdf5")
+data = load("tests/data/alltestdata5.hdf5")
 
 graph = Hypergraph_from_legacy_scalars(data["madj2"],data["madj3"],size(data["madj2"],1))
 
-lookups = prepare_lookups(graph)
-
-(t,p_1,p_2,pi_) = calculate_hypergraph_params(graph, lookups...)
-
 N = graph.vertex_nums
 L = graph.maxinum_edge_size
+
+lookups = prepare_lookups(graph)
+
+(t,r) = calculate_hypergraph_params(graph, lookups...)
+
+(p_1,p_2,pi_) = calculate_random_walk_prob(r, N, lookups...)
 
 eta_all_order = Vector{Vector{Float64}}(undef, L + 1)
 eta_all_order[1] = zeros(Float64, N)
@@ -80,14 +82,13 @@ for l in 1:(L-1)
     end
 end
 
-simplified_b_c_expr = Symbolics.simplify(b_c_expr)
-coeff_b = Symbolics.coeff(simplified_b_c_expr, b)
-coeff_c = Symbolics.coeff(simplified_b_c_expr, c)
+coeff_b = Symbolics.coeff(b_c_expr, b)
+coeff_c = Symbolics.coeff(b_c_expr, c)
 b_c_ratio_expr = -coeff_c / coeff_b
-values = Dict(delta[2] => data["disc1"][], delta[3] => data["disc2"][])
-b_c_ratio_num = substitute(simplify(b_c_ratio_expr), values)
-coeff_b_num = substitute(simplify(coeff_b), values)
-coeff_c_num = substitute(simplify(coeff_c), values)
+delta_values = Dict(delta[2] => data["disc1"][], delta[3] => data["disc2"][])
+b_c_ratio_num = substitute(simplify(b_c_ratio_expr), delta_values)
+coeff_b_num = substitute(simplify(coeff_b), delta_values)
+coeff_c_num = substitute(simplify(coeff_c), delta_values)
 # b_c_ratio_err = (b_c_ratio_num - data["bcratio"][]) / data["bcratio"][]
 # coeff_b_err = (coeff_b_num - data["fb"][]) / data["fb"][]
 # coeff_c_err = (-coeff_c_num - data["fc"][]) / data["fc"][]

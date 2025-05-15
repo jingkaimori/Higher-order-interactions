@@ -16,7 +16,7 @@ function prepare_lookups(N::Int, L::Int)::Tuple{PascalsTriangle, Vector{Vector{T
     (pt, combinations_list)
 end
 
-function calculate_hypergraph_params(graph::Hypergraph, pt::PascalsTriangle, combinations_list::Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}})::Tuple{Vector{Hypergraph}, Matrix{Float64}, Matrix{Float64}, Vector{Float64}}
+function calculate_hypergraph_params(graph::Hypergraph, pt::PascalsTriangle, combinations_list::Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}})::Tuple{Vector{Hypergraph}, Vector{Int}}
     N = graph.vertex_nums
     L = graph.maxinum_edge_size
     t = Vector{Hypergraph}(undef, L)
@@ -54,6 +54,10 @@ function calculate_hypergraph_params(graph::Hypergraph, pt::PascalsTriangle, com
         r .+= t[s][2]
     end
 
+    return (t, r)
+end
+
+function calculate_random_walk_prob(r::Vector{Int}, N::Int, pt::PascalsTriangle, combinations_list::Vector{Vector{Tuple{Vector{Int}, Vector{Int}}}})::Tuple{Matrix{Float64}, Matrix{Float64}, Vector{Float64}}
     r_rowsum = zeros(Int, N)
     r_rowsum_prepared = prepare_partial_combination_to_codes(N, 2, 1, collect(Combinations(N - 1, 2 - 1)), pt)
     for index_and_neg_tuple in combinations_list[1]
@@ -76,6 +80,7 @@ function calculate_hypergraph_params(graph::Hypergraph, pt::PascalsTriangle, com
         p_1[j, i] = r[index] / r_rowsum[j]
     end
     p_2 = p_1 * p_1
-    return (t,p_1,p_2,pi_)
+    
+    return (p_1, p_2, pi_)
 end
 
