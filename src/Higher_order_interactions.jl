@@ -23,4 +23,7 @@ include("calculate-b-vs-c-ratio.jl")
 export prepare_all, generate_MCG_mul, generate_PGG_mul, generate_TPGG_mul, calculate_b_c_ratio_from_graph_matrix
 include("game-analysis.jl")
 
+export quad_clustering
+include("quad-clustering.jl")
+
 end
