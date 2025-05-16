@@ -2,7 +2,7 @@ using Higher_order_interactions
 using Symbolics
 using LinearAlgebra
 
-function generate_MCG_mul(L)
+function generate_MSG_mul(L)
     @variables b c delta[2:L]
     game_mul = Vector{Multi_linear_polynomial}(undef, L)
     for s in 2:L
