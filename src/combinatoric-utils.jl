@@ -4,7 +4,7 @@ struct PascalsTriangle
 end
 
 function PascalsTriangle(max_n::Int)
-    data = Matrix{Int}(undef, max_n + 1, max_n + 1)
+    data = zeros(Int, max_n + 1, max_n + 1)
     for n in 0:max_n
         data[n+1, 1] = 1  # 第一列
         data[n+1, n+1] = 1  # 对角线
