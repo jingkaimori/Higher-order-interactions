@@ -54,6 +54,9 @@ function Hypergraph_from_incidence_matrix(matrix::Matrix{Int64}, N::Int, col_max
     for col in eachcol(matrix)
         col_nz = findall(col .== 1)
         col_size = length(col_nz)
+        if col_size == 0
+            continue
+        end
         col_order = get_combination_code(col_nz, N, pt)
         edges[col_size][col_order] = 1
     end
@@ -76,7 +79,9 @@ function scan_incidence_matrix(matrix::Matrix{Int64})
         col_nz = findall(col .== 1)
         col_size = length(col_nz)
         col_maxsize = max(col_maxsize, col_size)
-        col_minsize = min(col_minsize, col_size)
+        if col_size != 0
+            col_minsize = min(col_minsize, col_size)
+        end
     end
     return (N, col_maxsize, col_minsize)
 end
