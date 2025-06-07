@@ -111,3 +111,20 @@ function incidence_matrix_to_string(dense_mat::Matrix{Int})::String
 
     return result
 end
+
+function extract_degree_character_from_graph(dense_mat::BitMatrix)
+
+    (node_num, edge_num) = size(dense_mat)
+
+    stat_node_degs = zeros(Int, node_num)  # Dictionary to store counts of node_deg
+    stat_edge_degs = zeros(Int, edge_num)
+    for row in eachrow(dense_mat)
+        node_deg = count(row)
+        stat_node_degs[row.indices[1]] = node_deg
+    end
+    for col in eachcol(dense_mat)
+        edge_deg = count(col)
+        stat_edge_degs[col.indices[2]] = edge_deg
+    end
+    return (stat_node_degs,stat_edge_degs)
+end

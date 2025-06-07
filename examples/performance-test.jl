@@ -4,9 +4,23 @@ using Symbolics
 
 possible_graphs = readdir("tests/data/graphs/erdos-renyi-different-size", join=true)
 
+graph_mat_by_size = Dict{Int, Matrix{Int}}()
 for graph_path in possible_graphs
     data = load(graph_path)
-    prepared_info = prepare_all(data["graph"])
-    println("nodes(N): $(prepared_info[1].vertex_nums)")
-    @time calculate_b_c_ratio_from_graph_matrix(prepared_info, generate_PGG_mul)
+    graph_mat_by_size[size(data["graph"], 1)] = data["graph"]
+end
+
+begin
+    local prepared_info = prepare_all(graph_mat_by_size[10], generate_MSG_mul)
+    calculate_b_c_ratio_from_graph_matrix(prepared_info)
+end
+
+# 按照键的从小到大读取 graph_mat_by_size 中的值
+for key in sort(collect(keys(graph_mat_by_size)))
+    if key > 16
+        break
+    end
+    local prepared_info = prepare_all(graph_mat_by_size[key], generate_MSG_mul)
+    println("nodes(N): $key")
+    @time calculate_b_c_ratio_from_graph_matrix(prepared_info)
 end
