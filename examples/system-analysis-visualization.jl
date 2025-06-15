@@ -29,10 +29,13 @@ default(fontfamily = "SimSun", markerstrokecolor = nothing, guidefontsize = 10, 
 
 ##
 
-function scatter_different_game_sep(xlabel::String, category::String, xvar; fitting::Bool = true, scatterargs...)
+function scatter_different_game_sep(xlabel::String, subfigindex, category::String, xvar; fitting::Bool = true, scatterargs...)
     plots = Vector{Plots.Plot}()
-    for (gt, gt_display) in [("PGG", "NPGG"), ("TPGG", "TPGG"), ("MSG", "MSG")]
-        p = plot(xlabel = xlabel, ylabel = raw"$(b/c)^*$", title=gt_display)
+    for (gt, gt_display, idx) in Iterators.zip(["PGG", "TPGG", "MSG"], ["NPGG", "TPGG", "MSG"], subfigindex)
+        p = plot(
+            xlabel = xlabel,
+            ylabel = raw"$(b/c)^*$",
+            title="($(lowercase(string(LabelNumeral{AlphaNumeral}(idx))))) $gt_display")
         filter1 = findall(gametype_mask[gt] .&& graphtype_mask[category])
         x_filtered = xvar[filter1]
         y_filtered = b_c_ratios[filter1]
@@ -49,10 +52,13 @@ function scatter_different_game_sep(xlabel::String, category::String, xvar; fitt
     return plots
 end
 
-function plot_different_game_sep(xlabel::String, category::String, xvar)
+function plot_different_game_sep(xlabel::String, subfigindex, category::String, xvar)
     plots = Vector{Plots.Plot}()
-    for (gt, gt_display) in [("PGG", "NPGG"), ("TPGG", "TPGG"), ("MSG", "MSG")]
-        p = plot(xlabel = xlabel, ylabel = raw"$(b/c)^*$", title=gt_display)
+    for (gt, gt_display, idx) in Iterators.zip(["PGG", "TPGG", "MSG"], ["NPGG", "TPGG", "MSG"], subfigindex)
+        p = plot(
+            xlabel = xlabel,
+            ylabel = raw"$(b/c)^*$",
+            title="($(lowercase(string(LabelNumeral{AlphaNumeral}(idx))))) $gt_display")
         filter1 = findall(gametype_mask[gt] .&& graphtype_mask[category])
         x_filtered = xvar[filter1]
         y_filtered = b_c_ratios[filter1]
@@ -92,13 +98,13 @@ end
 
 category_name = "edge-distrib"
 graphtype_mask[category_name] = (graphtype .== category_name)
-plots_1 = scatter_different_game_sep("节点度方差", category_name, node_deg_val)
+plots_1 = scatter_different_game_sep("节点度方差", 2:4, category_name, node_deg_val)
 edge_graph_id = uuids[ findfirst(graphtype_mask[category_name])]
 (_, edge_degree_controlled) = 
     extract_degree_character_from_graph(
         (load("tests/data/graphs/$category_name/$edge_graph_id.hdf5"))["graph"] .== 1
     )
-hist_edge_1 = histogram_no_bins(edge_degree_controlled, title = "组规模分布");
+hist_edge_1 = histogram_no_bins(edge_degree_controlled, title = "(a) 组规模分布");
 plot_agg1 = plot(hist_edge_1, plots_1..., layout=(2,2), size = (600,300))
 savefig(plot_agg1, "results/临界收益比对节点度方差（控制组规模分布）.pdf")
 ##
@@ -108,13 +114,13 @@ savefig(plot_agg1, "results/临界收益比对节点度方差（控制组规模�
 
 category_name = "node-distrib"
 graphtype_mask[category_name] = (graphtype .== category_name)
-plots_2 = scatter_different_game_sep("组规模方差", category_name, edge_deg_val)
+plots_2 = scatter_different_game_sep("组规模方差", 2:4, category_name, edge_deg_val)
 node_graph_id = uuids[ findfirst(graphtype_mask[category_name])]
 (node_degree_controlled, _) = 
     extract_degree_character_from_graph(
         (load("tests/data/graphs/$category_name/$node_graph_id.hdf5"))["graph"] .== 1
     )
-hist_node_1 = histogram_no_bins(node_degree_controlled, title = "节点度分布");
+hist_node_1 = histogram_no_bins(node_degree_controlled, title = "(a) 节点度分布");
 plot_agg2 = plot(hist_node_1, plots_2..., layout=(2,2), size = (600,300))
 savefig(plot_agg2, "results/临界收益比对组规模方差（控制节点度分布）.pdf")
 ##
@@ -124,8 +130,8 @@ savefig(plot_agg2, "results/临界收益比对组规模方差（控制节点度�
 
 category_name = "node-edge-variance"
 graphtype_mask[category_name] = (graphtype .== category_name)
-plots_3 = plot_different_game_sep("节点平均度", category_name, node_deg_avg)
-plots_4 = plot_different_game_sep("平均组规模", category_name, edge_deg_avg)
+plots_3 = plot_different_game_sep("节点平均度", 1:3, category_name, node_deg_avg)
+plots_4 = plot_different_game_sep("平均组规模", 4:6, category_name, edge_deg_avg)
 plot_agg3 = plot(plots_3..., plots_4..., layout=(2,3), size = (600,360))
 savefig(plot_agg3, "results/密集度对临界收益比（控制组规模方差和节点度方差）.pdf")
 
@@ -144,15 +150,15 @@ savefig(plot_agg3, "results/密集度对临界收益比（控制组规模方差�
 
 category_name = "node-edge-distrib1"
 graphtype_mask[category_name] = (graphtype .== category_name)
-plots_5 = scatter_different_game_sep("平均聚集系数", category_name, clustering_coefficent)
-plots_6 = scatter_different_game_sep("聚集系数方差", category_name, clustering_coefficent_val; fitting = false, xticks = 0.010:0.002:0.0161, xlim=(0.0093, 0.0167))
+plots_5 = scatter_different_game_sep("平均聚集系数", 3:2:7, category_name, clustering_coefficent)
+plots_6 = scatter_different_game_sep("聚集系数方差", 4:2:8, category_name, clustering_coefficent_val; fitting = false, xticks = 0.010:0.002:0.0161, xlim=(0.0093, 0.0167))
 node_edge_graph_id = uuids[ findfirst(graphtype_mask[category_name])]
 (node_degree_controlled, edge_degree_controlled) = 
     extract_degree_character_from_graph(
         (load("tests/data/graphs/$category_name/$node_edge_graph_id.hdf5"))["graph"] .== 1
     )
-hist_edge_2 = histogram_no_bins(edge_degree_controlled, title = "组规模分布", xlims = [0,6]);
-hist_node_2 = histogram_no_bins(node_degree_controlled, title = "节点度分布");
+hist_edge_2 = histogram_no_bins(edge_degree_controlled, title = "(a) 组规模分布", xlims = [0,6]);
+hist_node_2 = histogram_no_bins(node_degree_controlled, title = "(b) 节点度分布");
 plot_agg4 = plot(
     hist_edge_2, hist_node_2, Iterators.flatten(Iterators.zip(plots_5, plots_6))...,
     layout=(4,2), size = (600,720)
@@ -160,9 +166,9 @@ plot_agg4 = plot(
 savefig(plot_agg4, "results/组规模分布和节点度分布（控制组规模分布和节点度分布1）.pdf")
 
 ##
-category_name = "node-edge-distrib1"
-plots_5 = scatter_different_game_sep("平均聚集系数", category_name, clustering_coefficent; xticks = 0.25:0.08:0.411, xlim=(0.245, 0.416))
-plots_6 = scatter_different_game_sep("聚集系数方差", category_name, clustering_coefficent_val; fitting = false, xticks = 0.010:0.003:0.0161, xlim=(0.0093, 0.0167))
+# category_name = "node-edge-distrib1"
+# plots_5 = scatter_different_game_sep("平均聚集系数", category_name, clustering_coefficent; xticks = 0.25:0.08:0.411, xlim=(0.245, 0.416))
+# plots_6 = scatter_different_game_sep("聚集系数方差", category_name, clustering_coefficent_val; fitting = false, xticks = 0.010:0.003:0.0161, xlim=(0.0093, 0.0167))
 
 ##
 # plot_smallagg4 = plot(
@@ -181,15 +187,15 @@ plots_6 = scatter_different_game_sep("聚集系数方差", category_name, cluste
 
 category_name = "node-edge-distrib2"
 graphtype_mask[category_name] = (graphtype .== category_name)
-plots_5 = scatter_different_game_sep("平均聚集系数", category_name, clustering_coefficent)
-plots_6 = scatter_different_game_sep("聚集系数方差", category_name, clustering_coefficent_val; fitting = false)
+plots_5 = scatter_different_game_sep("平均聚集系数", 3:2:7, category_name, clustering_coefficent)
+plots_6 = scatter_different_game_sep("聚集系数方差", 4:2:8, category_name, clustering_coefficent_val; fitting = false)
 node_edge_graph_id = uuids[ findfirst(graphtype_mask[category_name])]
 (node_degree_controlled, edge_degree_controlled) = 
     extract_degree_character_from_graph(
         (load("tests/data/graphs/$category_name/$node_edge_graph_id.hdf5"))["graph"] .== 1
     )
-hist_edge_2 = histogram_no_bins(edge_degree_controlled, title = "组规模分布", xlims = [0,6]);
-hist_node_2 = histogram_no_bins(node_degree_controlled, title = "节点度分布");
+hist_edge_2 = histogram_no_bins(edge_degree_controlled, title = "(a) 组规模分布", xlims = [0,6]);
+hist_node_2 = histogram_no_bins(node_degree_controlled, title = "(b) 节点度分布");
 plot_agg4 = plot(
     hist_edge_2, hist_node_2, Iterators.flatten(Iterators.zip(plots_5, plots_6))...,
     layout=(4,2), size = (600,720)
