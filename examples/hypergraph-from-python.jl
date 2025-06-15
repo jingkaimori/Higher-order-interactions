@@ -1,6 +1,7 @@
 using PyCall
 using SparseArrays
 using UUIDs
+using FileIO
 
 function generate_k1_k2_type1(nodes::Int, ratio::Float64, edge_ranks::Int, edge_size::Int)
     k2 = Dict(begin
@@ -17,6 +18,19 @@ function generate_k1_k2_type1(nodes::Int, ratio::Float64, edge_ranks::Int, edge_
         end
         l => rank
     end for l in 1:edge_size)
+    k2_sum = sum(values(k2))
+    k2_equlized = k2_sum ÷ nodes
+    k2_remain = k2_sum % nodes
+    k1 = Dict(l => if l > k2_remain
+        k2_equlized
+    else
+        k2_equlized + 1
+    end for l in 1:nodes)
+    (k1, k2)
+end
+
+function generate_k1_k2_type2(nodes::Int, edge_size::Int)
+    k2 = Dict(l => rand(2:(nodes-1)) for l in 1:edge_size)
     k2_sum = sum(values(k2))
     k2_equlized = k2_sum ÷ nodes
     k2_remain = k2_sum % nodes
@@ -58,10 +72,40 @@ function generate_valid_chung_lu_graph(k1, k2)
     end
 end
 
-function save_graph_data(incidence_matrix::Array, uuid::UUID)
+function generate_valid_e_r_graph(n,m,p)
+
+    generator = pyimport("hypernetx.algorithms.generative_models")
+    py = pyimport("builtins")
+
+    while true
+        local graph_hnx = generator.erdos_renyi_hypergraph(n,m,p)
+        local len = py.len(py.list(graph_hnx.connected_components()))
+        if len > 1
+            println("Graph has more than one connected component, regenerating...")
+            continue
+        end
+
+        local ic_sm = graph_hnx.incidence_matrix()
+
+        local ic_sm_julia = py_csr_to_julia_sparse(ic_sm.tocsc())
+
+        local ic_julia = Array(ic_sm_julia)
+
+        local single_one_columns = findall(col -> sum(col .== 1) == 1, eachcol(ic_julia))
+
+        if !isempty(single_one_columns)
+            println("Columns with only one '1' and the rest '0', regenerating...")
+        else
+            println("No such columns found.")
+            return ic_julia
+        end
+    end
+end
+
+function save_graph_data(incidence_matrix::Array, uuid::UUID, subclass::String = "erdos-renyi")
     # 将图数据保存到文件
-    write("tests/data/graphs/$uuid.txt", matrix_to_string(incidence_matrix))
-    save("tests/data/graphs/$uuid.hdf5", Dict("graph" => incidence_matrix))
+    println("save graph $uuid")
+    save("tests/data/graphs/$subclass/$uuid.hdf5", Dict("graph" => incidence_matrix))
 end
 
 
@@ -76,23 +120,41 @@ function py_csr_to_julia_sparse(py_csc)
     return SparseMatrixCSC(m, n, indptr, indices, data)
 end
 
-function matrix_to_string(dense_mat)
-
-    # 将每一行转换为字符串，并用空格分隔
-    rows = size(dense_mat, 1)
-    result = ""
-    for i in 1:rows
-        row = dense_mat[i, :]
-        row_str = join(row, " ")
-        result *= row_str * "\n"
+function extract_real_k_from_graph(dense_mat)
+    k1 = Dict{Int, Int}()
+    k2 = Dict{Int, Int}()
+    for row in eachrow(dense_mat)
+        node_deg = count(row .== 1)
+        setindex!(k1, node_deg, row.indices[1])
+    end
+    for col in eachcol(dense_mat)
+        edge_deg = count(col .== 1)
+        setindex!(k2, edge_deg, col.indices[2])
     end
 
-    return result
+    return (k1, k2)
 end
 
+if false
+    
+
 for highest_level in 3:7
-    k = generate_k1_k2_type1(10, 5.0, highest_level,20)
+    assumed_k = generate_k1_k2_type2(10, 60)
+    local test_graph = generate_valid_chung_lu_graph(assumed_k...)
+    real_k = extract_real_k_from_graph(test_graph)
+    for _ in 1:8
+        id = uuid1()
+        local real_graph = generate_valid_chung_lu_graph(real_k...)
+        real_k = extract_real_k_from_graph(real_graph)
+        save_graph_data(real_graph, id, real_k...)
+    end
+    
+end
+    
+end
+
+for N in 15:16
+    graph_mat= generate_valid_e_r_graph(N, N*2, 0.5)
     id = uuid1()
-    local graph = generate_valid_chung_lu_graph(k...)
-    save_graph_data(graph, id)
+    save_graph_data(graph_mat, id, "erdos-renyi-different-size")
 end

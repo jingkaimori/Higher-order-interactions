@@ -127,3 +127,9 @@ function multi_linear_polynomial(game::The_game)::Multi_linear_polynomial
         v_1etc
     )
 end
+
+function substitute_mlp_struct(mlp::Multi_linear_polynomial,values::Dict)::Multi_linear_polynomial
+    unrelated = substitute.(mlp.unrelated_to_self_strategy, Ref(values))
+    related = substitute.(mlp.related_to_self_strategy, Ref(values))
+    return Multi_linear_polynomial(unrelated, related)
+end
