@@ -1,116 +1,83 @@
 using Higher_order_interactions
-using FileIO
+using HDF5
 using Symbolics
 using UUIDs
 using Statistics
 
-possible_graphs = Iterators.flatten((
-    readdir("tests/data/graphs/edge-distrib", join=true),
-    readdir("tests/data/graphs/node-distrib", join=true),
-    readdir("tests/data/graphs/node-edge-variance", join=true),
-    readdir("tests/data/graphs/node-edge-distrib1", join=true),
-    readdir("tests/data/graphs/node-edge-distrib2", join=true),
-))
+StatsticsEntry = @NamedTuple begin
+    uuid::NTuple{2, UInt64}
+    gametype::UInt8
+    graphtype::UInt8
+    node_deg_avg::Float32
+    edge_deg_avg::Float32
+    node_deg_val::Float32
+    edge_deg_val::Float32
+    clustering_coefficent::Float32
+    clustering_coefficent_val::Float32
+    b_c_ratio::Float32
+end
+statstics = Vector{StatsticsEntry}()
+sizehint!(statstics, 1800)
 
-graph_mat_by_id = Dict{String, Tuple{String, Matrix{Int}}}()
+game_list = (
+    (generate_PGG_mul, "NPGG"),
+    (generate_TPGG_mul, "TPGG"),
+    (generate_MSG_mul, "MSG"),
+)
+category_metadata = Dict{AbstractString, UInt8}()
 
-for possible_graph_path in possible_graphs
-    parts = match(r"(?:\/|\\)([0-9a-z-]+)(?:\/|\\)([0-9a-zA-Z-]+)\.hdf5$", possible_graph_path)
-    if !isnothing(parts)
-        graph_type = parts.captures[1]
-        uuid_str = parts.captures[2]
-        local data = load(possible_graph_path)
-        graph_mat_by_id[uuid_str] = (graph_type, data["graph"])
+h5open(
+    "tests/data/hypergraphs.hdf5",
+    "r";
+) do fid
+    category_groups = fid["incidence"]
+    for (category_id, category_group) in enumerate(category_groups)
+        raw_str = HDF5.name(category_group)
+        parts = match(r"^\/incidence\/([0-9a-z-]+)$", raw_str)
+        category_name = parts.captures[1]
+        category_metadata[category_name] = UInt8(category_id)
+    end
+
+    for (game_type_id, (game_generator,)) in enumerate(game_list)
+        prepared_info = nothing
+        for category_group in category_groups
+            for incidence_dataset in category_group
+                raw_str = HDF5.name(incidence_dataset)
+                parts = match(r"^\/incidence\/([0-9a-z-]+)\/([0-9a-zA-Z-]+)$", raw_str)
+                uuid_str = parts.captures[2]
+                category_name = parts.captures[1]
+
+                incidence_matrix = read(incidence_dataset)
+                boolean_incidence_matrix = incidence_matrix .== 1
+                (node_degree_distrib, edge_degree_distrib) = extract_degree_character_from_graph(boolean_incidence_matrix)
+                clustering_coefficent_distrib = quad_clustering(boolean_incidence_matrix)
+
+                prepared_info = prepare_all(Int64.(incidence_matrix), game_generator, prepared_info)
+
+                (b_c_ratio_expr,_,_,delta) = calculate_b_c_ratio_from_graph_matrix(prepared_info)
+                delta_values = Dict(delta[l] => 1.01^l for l in 2:prepared_info[1].maxinum_edge_size)
+                b_c_ratio_num = substitute((b_c_ratio_expr), delta_values)
+
+                push!(statstics, (
+                    uuid = UUID(uuid_str),
+                    gametype = game_type_id,
+                    graphtype = category_metadata[category_name],
+                    node_deg_avg = Float32(mean(node_degree_distrib)),
+                    edge_deg_avg = Float32(mean(edge_degree_distrib)),
+                    node_deg_val = Float32(var(node_degree_distrib)),
+                    edge_deg_val = Float32(var(edge_degree_distrib)),
+                    clustering_coefficent = Float32(mean(clustering_coefficent_distrib)),
+                    clustering_coefficent_val = Float32(var(clustering_coefficent_distrib)),
+                    b_c_ratio = Float32(b_c_ratio_num)
+                ))
+            end
+        end
     end
 end
 
-prepared_info = nothing
-data_num = length(graph_mat_by_id)
-result_num = 3*data_num
-
-uuids = Vector{String}()
-sizehint!(uuids, result_num)
-gametype = Vector{String}()
-sizehint!(uuids, gametype)
-graphtype = Vector{String}()
-sizehint!(uuids, graphtype)
-node_deg_avg = Vector{Float32}()
-sizehint!(node_deg_avg, result_num)
-node_deg_val = Vector{Float32}()
-sizehint!(node_deg_val, result_num)
-edge_deg_avg = Vector{Float32}()
-sizehint!(edge_deg_avg, result_num)
-edge_deg_val = Vector{Float32}()
-sizehint!(edge_deg_val, result_num)
-clustering_coefficent = Vector{Float32}()
-sizehint!(clustering_coefficent, result_num)
-clustering_coefficent_val = Vector{Float32}()
-sizehint!(clustering_coefficent_val, result_num)
-b_c_ratios = Vector{Float32}()
-sizehint!(b_c_ratios, result_num)
-
-function append_to_statstics(id, graph_type, gametype_str, node_degree_distrib, edge_degree_distrib, clustering_coefficent_distrib, b_c_ratio_num)
-    push!(uuids, id)
-    push!(gametype, gametype_str)
-    push!(graphtype, graph_type)
-    push!(node_deg_avg, mean(node_degree_distrib))
-    push!(edge_deg_avg, mean(edge_degree_distrib))
-    push!(clustering_coefficent, mean(clustering_coefficent_distrib))
-    push!(node_deg_val, var(node_degree_distrib))
-    push!(edge_deg_val, var(edge_degree_distrib))
-    push!(clustering_coefficent_val, var(clustering_coefficent_distrib))
-    push!(b_c_ratios, b_c_ratio_num)
+h5open("tests/data/statstics.hdf5", "w") do fid
+    write(fid, "statstics", statstics)
+    write(fid, "game-type-strings", [game_name for (_, game_name) in game_list])
+    sorted_categories = sort(collect(category_metadata), by = x -> x[2])
+    write(fid, "graph-type-strings", [x[1] for x in sorted_categories])
 end
-
-for (id, graph_matrix_and_type) in graph_mat_by_id
-    (graph_type, graph_matrix) = graph_matrix_and_type
-    boolean_graph_matrix = graph_matrix .== 1
-    (node_degree_distrib, edge_degree_distrib) = extract_degree_character_from_graph(boolean_graph_matrix)
-    clustering_coefficent_distrib = quad_clustering(boolean_graph_matrix)
-
-    global prepared_info = prepare_all(graph_matrix, generate_PGG_mul, prepared_info)
-
-    (b_c_ratio_expr,_,_,delta) = calculate_b_c_ratio_from_graph_matrix(prepared_info)
-    delta_values = Dict(delta[l] => 1.01^l for l in 2:prepared_info[1].maxinum_edge_size)
-    b_c_ratio_num = substitute((b_c_ratio_expr), delta_values)
-    append_to_statstics(id, graph_type, "PGG", node_degree_distrib, edge_degree_distrib, clustering_coefficent_distrib, b_c_ratio_num)
-end
-
-for (id, graph_matrix_and_type) in graph_mat_by_id
-    (graph_type, graph_matrix) = graph_matrix_and_type
-    boolean_graph_matrix = graph_matrix .== 1
-    (node_degree_distrib, edge_degree_distrib) = extract_degree_character_from_graph(boolean_graph_matrix)
-    clustering_coefficent_distrib = quad_clustering(boolean_graph_matrix)
-
-    global prepared_info = prepare_all(graph_matrix, generate_TPGG_mul, prepared_info)
-
-    (b_c_ratio_expr,) = calculate_b_c_ratio_from_graph_matrix(prepared_info)
-    b_c_ratio_num = substitute((b_c_ratio_expr), Dict())
-    append_to_statstics(id, graph_type, "TPGG", node_degree_distrib, edge_degree_distrib, clustering_coefficent_distrib, b_c_ratio_num)
-end
-
-for (id, graph_matrix_and_type) in graph_mat_by_id
-    (graph_type, graph_matrix) = graph_matrix_and_type
-    boolean_graph_matrix = graph_matrix .== 1
-    (node_degree_distrib, edge_degree_distrib) = extract_degree_character_from_graph(boolean_graph_matrix)
-    clustering_coefficent_distrib = quad_clustering(boolean_graph_matrix)
-
-    global prepared_info = prepare_all(graph_matrix, generate_MSG_mul, prepared_info)
-
-    (b_c_ratio_expr,) = calculate_b_c_ratio_from_graph_matrix(prepared_info)
-    b_c_ratio_num = substitute((b_c_ratio_expr), Dict())
-    append_to_statstics(id, graph_type, "MSG", node_degree_distrib, edge_degree_distrib, clustering_coefficent_distrib, b_c_ratio_num)
-end
-
-save("tests/data/statstics.hdf5", Dict(
-    "uuids" => uuids,
-    "gametype" => gametype,
-    "graphtype" => graphtype,
-    "node_deg_avg" => node_deg_avg,
-    "edge_deg_avg" => edge_deg_avg,
-    "clustering_coefficent" => clustering_coefficent,
-    "node_deg_val" => node_deg_val,
-    "edge_deg_val" => edge_deg_val,
-    "clustering_coefficent_val" => clustering_coefficent_val,
-    "b_c_ratios" => b_c_ratios
-))

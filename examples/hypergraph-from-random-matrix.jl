@@ -1,6 +1,5 @@
 using UUIDs
 using HDF5
-using FileIO
 using Higher_order_interactions
 using SimpleHypergraphs
 using Random
@@ -9,7 +8,10 @@ using StatsBase
 
 function save_graph_data(incidence_matrix::Array, uuid::UUID, subclass::String="erdos-renyi")
     println("save graph $uuid")
-    save("tests/data/graphs/$subclass/$uuid.hdf5", Dict("graph" => incidence_matrix))
+    h5open("tests/data/hypergraphs.hdf5", "a") do fid
+        incidence_category_group = fid["incidence/$subclass"]
+        write(incidence_category_group, uuid, incidence_matrix)
+    end
 end
 
 function check_gale_ryser(node_distrib::Vector{Int}, edge_distrib::Vector{Int})::Bool
@@ -126,6 +128,17 @@ function generate_graphs_from_node_edge_distrib(node_distrib::Vector{Int}, edge_
         end
         return matrix
     end
+end
+
+##
+
+h5open("tests/data/hypergraphs.hdf5", "w") do fid
+    incidence_group = create_group(fid, "incidence")
+    create_group(incidence_group, "node-edge-distrib1")
+    create_group(incidence_group, "node-edge-distrib2")
+    create_group(incidence_group, "node-edge-variance")
+    create_group(incidence_group, "node-distrib")
+    create_group(incidence_group, "edge-distrib")
 end
 
 ## 
