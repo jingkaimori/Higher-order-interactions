@@ -1,5 +1,6 @@
 using SparseArrays
 using LinearAlgebra
+using AMD
 
 function generate_replacements(l::Int)
     rep = Vector{Vector{Int}}(undef, l)
@@ -106,7 +107,8 @@ function solve_eta(p_1, N, l, eta_l_lower_size, pt, combinations_list)
     
     adj_mat = sparse(id_x_arr, id_y_arr, val_arr, dict_size, dict_size);
     # b_arr = -sparse(b_arr);
-    F = lu(adj_mat)
+    permutation = amd(adj_mat)
+    F = lu(adj_mat; q = permutation)
 
     # 使用 \ 运算符求解线性方程组
     retime = F \ b_arr
