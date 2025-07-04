@@ -17,7 +17,7 @@ end
 
 # 按照键的从小到大读取 graph_mat_by_size 中的值
 for key in sort(collect(keys(graph_mat_by_size)))
-    if key > 16
+    if key > 20
         break
     end
     local prepared_info = prepare_all(graph_mat_by_size[key], generate_MSG_mul)
